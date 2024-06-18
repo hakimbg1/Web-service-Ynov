@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build: ./backend/auth-service
+    container_name: auth-service
+    ports:
+      - "3001:3001"
+    networks:
+      - cinema-network
+
+  movie-service:
+    build: ./backend/movie-service
+    container_name: movie-service
+    ports:
+      - "3002:3002"
+    networks:
+      - cinema-network
+
+  movie-reservation:
+    build: ./backend/movie-reservation
+    container_name: movie-reservation
+    ports:
+      - "3003:3003"
+    networks:
+      - cinema-network
+
+  api-gateway:
+    build: ./backend/api-gateway
+    container_name: api-gateway
+    ports:
+      - "3000:3000"
+    networks:
+      - cinema-network
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - "3004:3000"
+    networks:
+      - cinema-network
+
+  mongo:
+    image: mongo
+    container_name: mongo
+    ports:
+      - "27017:27017"
+    networks:
+      - cinema-network
+
+  seeder:
+    build: ./backend/seeder
+    container_name: seeder
+    networks:
+      - cinema-network
+    depends_on:
+      - mongo
+
+networks:
+  cinema-network:
+    driver: bridge
