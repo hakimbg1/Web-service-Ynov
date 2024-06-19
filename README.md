@@ -6,9 +6,6 @@ CLASSE
 # M2 DEV LOGICIEL / MOBILE & IOT
 Nom du Projet
 
-# WebService backend
-Fonctionnalités
-
 # Technologies utilisées
 
 Node Js express docker
