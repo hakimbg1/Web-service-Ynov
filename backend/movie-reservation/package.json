@@ -1,0 +1,14 @@
+{
+  "name": "movie-reservation",
+  "version": "1.0.0",
+  "main": "src/app.js",
+  "dependencies": {
+    "axios": "^0.21.1",
+    "express": "^4.17.1",
+    "mongoose": "^5.12.3",
+    "uuid": "^8.3.2"
+  },
+  "scripts": {
+    "start": "node src/app.js"
+  }
+}
