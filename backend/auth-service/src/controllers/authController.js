@@ -4,7 +4,7 @@ const User = require('../models/userModel');
 
 const register = async (req, res) => {
   try {
-    const { username, password, role = 'user' } = req.body;
+    const { username, password, role = 'Client' } = req.body;
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = new User({ username, password: hashedPassword, role });
     await user.save();
@@ -19,7 +19,7 @@ const login = async (req, res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
     if (user && await bcrypt.compare(password, user.password)) {
-      const token = jwt.sign({ id: user._id, role: user.role }, 'secret', { expiresIn: '1h' });
+      const token = jwt.sign({ id: user._id, role: user.role, username: user.username }, 'secret', { expiresIn: '1h' });
       res.status(200).send({ token });
     } else {
       res.status(401).send({ message: 'Invalid credentials' });
@@ -39,7 +39,7 @@ const renewToken = (req, res) => {
 
   try {
     const decoded = jwt.verify(token, 'secret');
-    const newToken = jwt.sign({ id: decoded.id, role: decoded.role }, 'secret', { expiresIn: '1h' });
+    const newToken = jwt.sign({ id: decoded.id, role: decoded.role, username: decoded.username }, 'secret', { expiresIn: '1h' });
     res.status(200).send({ token: newToken });
   } catch (error) {
     res.status(401).send({ message: 'Invalid token' });
@@ -61,7 +61,8 @@ const verifyToken = (req, res) => {
 
   try {
     const decoded = jwt.verify(token, 'secret');
-    res.status(200).send(decoded);
+    const username = decoded.username || null;
+    res.status(200).send({ ...decoded, username });
   } catch (error) {
     res.status(403).send({ message: 'Invalid token' });
   }

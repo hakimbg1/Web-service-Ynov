@@ -6,7 +6,7 @@ const cors = require('cors');
 const app = express();
 
 const corsOptions = {
-    origin: '*', // Allow all origins (for development)
+    origin: '*',
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     preflightContinue: false,
     optionsSuccessStatus: 204
@@ -151,39 +151,38 @@ app.use('/movies', authenticateToken, authorizeRoles(['admin']), (req, res, next
     next();
 });
 
+// reservation routes
 // Protected routes for reservations
 app.post('/movie/:movieUid/reservations', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/movie': '',
+    pathRewrite: (path, req) => {
+        return path.replace('/movie/', '/reservation/movie/');
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to reservation service:', req.method, req.originalUrl);
+        
+        // Log the full address the request is forwarded to
+        const forwardPath = proxyReq.path;
+        const forwardAddress = `${proxyReq.protocol}//${proxyReq.host}${forwardPath}`;
+        console.log('Forwarding to address:', forwardAddress);
+        
         if (req.headers.authorization) {
             proxyReq.setHeader('authorization', req.headers.authorization);
         }
         streamifyBody(req, proxyReq);
     },
     onError: (err, req, res) => {
-        if (err.response) {
-            const status = err.response.status;
-            if (status === 422) {
-                handleErrors({ status: 422 }, req, res);
-            } else {
-                handleErrors({ status: 500 }, req, res);
-            }
-        } else {
-            handleErrors({ status: 500 }, req, res);
-        }
+        console.error('Proxy error:', err);
+        handleErrors({ status: 500 }, req, res);
     }
 }));
 
-app.post('/reservations/:uid/confirm', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
+app.post('/reservations/:uid/confirm', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/reservations': '',
+        '^/reservations': '/reservation', // This will remove /reservations from the path
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to reservation service:', req.method, req.originalUrl);
@@ -193,18 +192,8 @@ app.post('/reservations/:uid/confirm', authenticateToken, authorizeRoles(['clien
         streamifyBody(req, proxyReq);
     },
     onError: (err, req, res) => {
-        if (err.response) {
-            const status = err.response.status;
-            if (status === 422) {
-                handleErrors({ status: 422 }, req, res);
-            } else if (status === 410) {
-                handleErrors({ status: 410 }, req, res);
-            } else {
-                handleErrors({ status: 500 }, req, res);
-            }
-        } else {
-            handleErrors({ status: 500 }, req, res);
-        }
+        console.error('Proxy error:', err);
+        handleErrors({ status: 500 }, req, res);
     }
 }));
 
@@ -212,7 +201,7 @@ app.get('/movie/:movieUid/reservations', authenticateToken, authorizeRoles(['adm
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/movie': '',
+        '^/movie': '/reservation/movie/', // This will remove /movie from the path
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to reservation service:', req.method, req.originalUrl);
@@ -221,25 +210,20 @@ app.get('/movie/:movieUid/reservations', authenticateToken, authorizeRoles(['adm
         }
         streamifyBody(req, proxyReq);
     },
+    onProxyRes: (proxyRes, req, res) => {
+        console.log('Received response from reservation service:', proxyRes.statusCode, req.originalUrl);
+    },
     onError: (err, req, res) => {
-        if (err.response) {
-            const status = err.response.status;
-            if (status === 404) {
-                handleErrors({ status: 404 }, req, res);
-            } else {
-                handleErrors({ status: 500 }, req, res);
-            }
-        } else {
-            handleErrors({ status: 500 }, req, res);
-        }
+        console.error('Proxy error:', err);
+        handleErrors({ status: 500 }, req, res);
     }
 }));
 
-app.get('/reservations/:uid', authenticateToken, authorizeRoles(['admin', 'owner']), createProxyMiddleware({
+app.get('/reservations/:uid', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/reservations': '',
+        '^/reservations': '/reservation', 
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to reservation service:', req.method, req.originalUrl);
@@ -249,25 +233,36 @@ app.get('/reservations/:uid', authenticateToken, authorizeRoles(['admin', 'owner
         streamifyBody(req, proxyReq);
     },
     onError: (err, req, res) => {
-        if (err.response) {
-            const status = err.response.status;
-            if (status === 404) {
-                handleErrors({ status: 404 }, req, res);
-            } else {
-                handleErrors({ status: 500 }, req, res);
-            }
-        } else {
-            handleErrors({ status: 500 }, req, res);
-        }
+        console.error('Proxy error:', err);
+        handleErrors({ status: 500 }, req, res);
+    }
+}));
+
+
+app.get('/reservations/username/:username', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
+    target: 'http://movie-reservation:3003',
+    changeOrigin: true,
+    pathRewrite: (path, req) => path.replace('/reservations/username/', '/reservation/username/'),
+    onProxyReq: (proxyReq, req) => {
+        console.log('Forwarding authorized user request to reservation service:', req.method, req.originalUrl);
+        const forwardPath = proxyReq.path;
+        const forwardAddress = `${proxyReq.protocol}//${proxyReq.host}${forwardPath}`;
+        console.log('Forwarding to address:', forwardAddress);
+        if (req.headers.authorization) proxyReq.setHeader('authorization', req.headers.authorization);
+        streamifyBody(req, proxyReq);
+    },
+    onError: (err, req, res) => {
+        console.error('Proxy error:', err);
+        handleErrors({ status: 500 }, req, res);
     }
 }));
 
 // Cinema routes
-app.get('/cinema', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
+app.get('/cinema', authenticateToken, authorizeRoles(['client','admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/cinema': '',
+        '^/cinema': '/cinema',
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to cinema service:', req.method, req.originalUrl);
@@ -294,11 +289,11 @@ app.get('/cinema', authenticateToken, authorizeRoles(['client']), createProxyMid
     }
 }));
 
-app.get('/cinema/:uid', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
+app.get('/cinema/:uid', authenticateToken, authorizeRoles(['client','admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/cinema': '',
+        '^/cinema': '/cinema',
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to cinema service:', req.method, req.originalUrl);
@@ -325,7 +320,7 @@ app.post('/cinema', authenticateToken, authorizeRoles(['admin']), createProxyMid
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/cinema': '',
+        '^/cinema': '/cinema',
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to cinema service:', req.method, req.originalUrl);
@@ -352,7 +347,7 @@ app.put('/cinema/:uid', authenticateToken, authorizeRoles(['admin']), createProx
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/cinema': '',
+        '^/cinema': '/cinema',
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to cinema service:', req.method, req.originalUrl);
@@ -381,7 +376,7 @@ app.delete('/cinema/:uid', authenticateToken, authorizeRoles(['admin']), createP
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
     pathRewrite: {
-        '^/cinema': '',
+        '^/cinema': '/cinema',
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to cinema service:', req.method, req.originalUrl);
@@ -405,11 +400,12 @@ app.delete('/cinema/:uid', authenticateToken, authorizeRoles(['admin']), createP
 }));
 
 // Room routes
-app.get('/cinema/:cinemaUid/rooms', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
+app.get('/cinema/:cinemaUid/rooms', authenticateToken, authorizeRoles(['client' , 'admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms': '/cinema/:cinemaUid/rooms',
+    pathRewrite: (path, req) => {
+        const { cinemaUid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms`, `/rooms/cinema/${cinemaUid}/rooms`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to room service:', req.method, req.originalUrl);
@@ -432,11 +428,12 @@ app.get('/cinema/:cinemaUid/rooms', authenticateToken, authorizeRoles(['client']
     }
 }));
 
-app.get('/cinema/:cinemaUid/rooms/:uid', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
+app.get('/cinema/:cinemaUid/rooms/:uid', authenticateToken, authorizeRoles(['client' , 'admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms/:uid': '/cinema/:cinemaUid/rooms/:uid',
+    pathRewrite: (path, req) => {
+        const { cinemaUid, uid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms/${uid}`, `/rooms/rooms/${uid}`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to room service:', req.method, req.originalUrl);
@@ -462,8 +459,9 @@ app.get('/cinema/:cinemaUid/rooms/:uid', authenticateToken, authorizeRoles(['cli
 app.post('/cinema/:cinemaUid/rooms', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms': '/cinema/:cinemaUid/rooms',
+    pathRewrite: (path, req) => {
+        const { cinemaUid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms`, `/rooms`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to room service:', req.method, req.originalUrl);
@@ -489,8 +487,9 @@ app.post('/cinema/:cinemaUid/rooms', authenticateToken, authorizeRoles(['admin']
 app.put('/cinema/:cinemaUid/rooms/:uid', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms/:uid': '/cinema/:cinemaUid/rooms/:uid',
+    pathRewrite: (path, req) => {
+        const { cinemaUid, uid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms/${uid}`, `/rooms/rooms/${uid}`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to room service:', req.method, req.originalUrl);
@@ -518,8 +517,9 @@ app.put('/cinema/:cinemaUid/rooms/:uid', authenticateToken, authorizeRoles(['adm
 app.delete('/cinema/:cinemaUid/rooms/:uid', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms/:uid': '/cinema/:cinemaUid/rooms/:uid',
+    pathRewrite: (path, req) => {
+        const { cinemaUid, uid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms/${uid}`, `/rooms/rooms/${uid}`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to room service:', req.method, req.originalUrl);
@@ -543,11 +543,12 @@ app.delete('/cinema/:cinemaUid/rooms/:uid', authenticateToken, authorizeRoles(['
 }));
 
 // Seance routes
-app.get('/cinema/:cinemaUid/rooms/:roomUid/sceances', authenticateToken, authorizeRoles(['client']), createProxyMiddleware({
+app.get('/cinema/:cinemaUid/rooms/:roomUid/sceances', authenticateToken, authorizeRoles(['client', 'admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms/:roomUid/sceances': '/cinema/:cinemaUid/rooms/:roomUid/sceances',
+    pathRewrite: (path, req) => {
+        const { cinemaUid, roomUid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms/${roomUid}/sceances`, `/sceances`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to seance service:', req.method, req.originalUrl);
@@ -573,8 +574,9 @@ app.get('/cinema/:cinemaUid/rooms/:roomUid/sceances', authenticateToken, authori
 app.post('/cinema/:cinemaUid/rooms/:roomUid/sceances', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms/:roomUid/sceances': '/cinema/:cinemaUid/rooms/:roomUid/sceances',
+    pathRewrite: (path, req) => {
+        const { cinemaUid, roomUid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms/${roomUid}/sceances`, `/sceances`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to seance service:', req.method, req.originalUrl);
@@ -600,8 +602,9 @@ app.post('/cinema/:cinemaUid/rooms/:roomUid/sceances', authenticateToken, author
 app.put('/cinema/:cinemaUid/rooms/:roomUid/sceances/:uid', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms/:roomUid/sceances/:uid': '/cinema/:cinemaUid/rooms/:roomUid/sceances/:uid',
+    pathRewrite: (path, req) => {
+        const { cinemaUid, roomUid, uid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms/${roomUid}/sceances/${uid}`, `/sceances/${uid}`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to seance service:', req.method, req.originalUrl);
@@ -629,8 +632,9 @@ app.put('/cinema/:cinemaUid/rooms/:roomUid/sceances/:uid', authenticateToken, au
 app.delete('/cinema/:cinemaUid/rooms/:roomUid/sceances/:uid', authenticateToken, authorizeRoles(['admin']), createProxyMiddleware({
     target: 'http://movie-reservation:3003',
     changeOrigin: true,
-    pathRewrite: {
-        '^/cinema/:cinemaUid/rooms/:roomUid/sceances/:uid': '/cinema/:cinemaUid/rooms/:roomUid/sceances/:uid',
+    pathRewrite: (path, req) => {
+        const { cinemaUid, roomUid, uid } = req.params;
+        return path.replace(`/cinema/${cinemaUid}/rooms/${roomUid}/sceances/${uid}`, `/sceances/${uid}`);
     },
     onProxyReq: (proxyReq, req) => {
         console.log('Forwarding authorized user request to seance service:', req.method, req.originalUrl);

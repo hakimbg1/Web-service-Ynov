@@ -3,8 +3,8 @@ const { v4: uuidv4 } = require('uuid');
 
 const createReservation = async (req, res) => {
   try {
-    const { sceance, nbSeats, room } = req.body;
-    const reservation = new Reservation({ uid: uuidv4(), movieUid: req.params.movieUid, sceance, nbSeats, room, expiresAt: new Date(Date.now() + 15 * 60 * 1000) }); // Expires in 15 minutes
+    const { movieUid, username ,sceance, nbSeats, room, rank, status, expiresAt } = req.body;
+    const reservation = new Reservation({ uid: uuidv4(), movieUid, username ,sceance, nbSeats, room, rank, status, expiresAt }) ; // Expires in 15 minutes
     await reservation.save();
     res.status(201).send(reservation);
   } catch (error) {
@@ -15,6 +15,7 @@ const createReservation = async (req, res) => {
     }
   }
 };
+
 
 const confirmReservation = async (req, res) => {
   try {
@@ -35,7 +36,7 @@ const confirmReservation = async (req, res) => {
 
 const getReservationsByMovie = async (req, res) => {
   try {
-    const reservations = await Reservation.find({ movieUid: req.params.movieUid });
+    const reservations = await Reservation.find();
     res.status(200).send(reservations);
   } catch (error) {
     res.status(500).send(error);
@@ -55,4 +56,17 @@ const getReservationById = async (req, res) => {
   }
 };
 
-module.exports = { createReservation, confirmReservation, getReservationsByMovie, getReservationById };
+const getReservationsByUsername = async (req, res) => {
+  try {
+    const reservations = await Reservation.find({ username: req.params.username });
+    if (reservations.length > 0) {
+      res.status(200).send(reservations);
+    } else {
+      res.status(404).send({ message: 'No reservations found for this username' });
+    }
+  } catch (error) {
+    res.status(500).send(error);
+  }
+};
+
+module.exports = { createReservation, confirmReservation, getReservationsByMovie, getReservationById, getReservationsByUsername };

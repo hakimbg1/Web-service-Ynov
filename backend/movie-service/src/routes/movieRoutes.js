@@ -10,16 +10,16 @@ const storage = multer.diskStorage({
     cb(null, 'uploads/');
   },
   filename: function (req, file, cb) {
-    cb(null, Date.now() + path.extname(file.originalname)); // Appending extension
+    cb(null, Date.now() + path.extname(file.originalname));
   }
 });
 
 const upload = multer({ storage: storage });
 
-router.get('/', getMovies); // public
-router.get('/:uid', getMovie); // public
-router.post('/', upload.single('picture'), addMovie); // admin role only
-router.put('/:uid', upload.single('picture'), updateMovie); // admin role only
-router.delete('/:uid', deleteMovie); // admin role only
+router.get('/', getMovies);
+router.get('/:uid', getMovie);
+router.post('/', upload.single('picture'), addMovie);
+router.put('/:uid', upload.single('picture'), updateMovie);
+router.delete('/:uid', deleteMovie);
 
 module.exports = router;

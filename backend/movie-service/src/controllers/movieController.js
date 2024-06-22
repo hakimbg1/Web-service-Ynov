@@ -1,11 +1,12 @@
 const Movie = require('../models/movieModel');
 const fs = require('fs');
-const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 exports.addMovie = async (req, res) => {
   try {
-    const { uid, name, description, rate, duration, hasReservationsAvailable } = req.body;
-    const pictureUrl = req.file ? `/uploads/${req.file.filename}` : '';
+    const { name, description, rate, duration, hasReservationsAvailable } = req.body;
+    const uid = uuidv4();
+    const pictureUrl = req.body.pictureUrl || '';
 
     const newMovie = new Movie({
       uid,
@@ -13,7 +14,7 @@ exports.addMovie = async (req, res) => {
       description,
       rate,
       duration,
-      hasReservationsAvailable,
+      hasReservationsAvailable: hasReservationsAvailable || false,
       pictureUrl
     });
 
