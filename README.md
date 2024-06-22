@@ -11,6 +11,10 @@ Nom du Projet
 Node Js express docker
 Installation et lancement de l'application c'est par
 docker compose up
+
+# logins for admin
+root
+toor
    
 # Support
 
