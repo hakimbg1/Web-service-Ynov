@@ -7,7 +7,11 @@ const app = express();
 
 // Middleware
 app.use(cors());
+<<<<<<< HEAD
 app.use(express.json());
+=======
+app.use(express.json()); // This should be enough for JSON parsing
+>>>>>>> 29cade4207745c79ded0b7782b6bc0650f01c96f
 
 // Routes
 app.use('/', authRoutes);

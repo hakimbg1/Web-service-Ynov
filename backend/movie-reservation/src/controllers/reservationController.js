@@ -3,8 +3,13 @@ const { v4: uuidv4 } = require('uuid');
 
 const createReservation = async (req, res) => {
   try {
+<<<<<<< HEAD
     const { movieUid, username ,sceance, nbSeats, room, rank, status, expiresAt } = req.body;
     const reservation = new Reservation({ uid: uuidv4(), movieUid, username ,sceance, nbSeats, room, rank, status, expiresAt }) ; // Expires in 15 minutes
+=======
+    const { sceance, nbSeats, room } = req.body;
+    const reservation = new Reservation({ uid: uuidv4(), movieUid: req.params.movieUid, sceance, nbSeats, room, expiresAt: new Date(Date.now() + 15 * 60 * 1000) }); // Expires in 15 minutes
+>>>>>>> 29cade4207745c79ded0b7782b6bc0650f01c96f
     await reservation.save();
     res.status(201).send(reservation);
   } catch (error) {
@@ -16,7 +21,10 @@ const createReservation = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> 29cade4207745c79ded0b7782b6bc0650f01c96f
 const confirmReservation = async (req, res) => {
   try {
     const reservation = await Reservation.findOne({ uid: req.params.uid });
@@ -36,7 +44,11 @@ const confirmReservation = async (req, res) => {
 
 const getReservationsByMovie = async (req, res) => {
   try {
+<<<<<<< HEAD
     const reservations = await Reservation.find();
+=======
+    const reservations = await Reservation.find({ movieUid: req.params.movieUid });
+>>>>>>> 29cade4207745c79ded0b7782b6bc0650f01c96f
     res.status(200).send(reservations);
   } catch (error) {
     res.status(500).send(error);
@@ -56,6 +68,7 @@ const getReservationById = async (req, res) => {
   }
 };
 
+<<<<<<< HEAD
 const getReservationsByUsername = async (req, res) => {
   try {
     const reservations = await Reservation.find({ username: req.params.username });
@@ -70,3 +83,6 @@ const getReservationsByUsername = async (req, res) => {
 };
 
 module.exports = { createReservation, confirmReservation, getReservationsByMovie, getReservationById, getReservationsByUsername };
+=======
+module.exports = { createReservation, confirmReservation, getReservationsByMovie, getReservationById };
+>>>>>>> 29cade4207745c79ded0b7782b6bc0650f01c96f

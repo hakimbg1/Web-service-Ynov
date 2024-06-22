@@ -9,7 +9,11 @@ const app = express();
 // Middleware
 app.use(cors());
 app.use(express.json());
+<<<<<<< HEAD
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+=======
+app.use('/uploads', express.static(path.join(__dirname, 'uploads'))); // Serve static files
+>>>>>>> 29cade4207745c79ded0b7782b6bc0650f01c96f
 
 // Routes
 app.use('/', movieRoutes);
